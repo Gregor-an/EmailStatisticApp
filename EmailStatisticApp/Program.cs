@@ -8,6 +8,8 @@ using log4net;
 using System.Reflection;
 using System.IO;
 using System.Configuration.Install;
+using EmailStatisticApp.EmailProcessing;
+using System.Threading;
 
 namespace EmailStatisticApp
 {
@@ -52,7 +54,7 @@ namespace EmailStatisticApp
 
             if(debugMode)
             {
-                Console.WriteLine("Ready to attach...");
+                Console.WriteLine("Ready to start...");
                 Console.WriteLine("<press enter to continue...>");
                 Console.ReadLine();
                 Program service = new Program();
@@ -68,19 +70,33 @@ namespace EmailStatisticApp
             }
         }
 
+        EmailProcessor _emailProcessor;
         protected override void OnStart(string[] args)
         {
-
+            this._emailProcessor = new EmailProcessor();
+            Thread thread = new Thread(new ThreadStart(this._emailProcessor.ProcessEmails));
+            thread.Start();
         }
 
         protected override void OnStop()
         {
-
+            if(_emailProcessor != null)
+            {
+                try
+                {
+                    _emailProcessor.ThreadManager.Stop();
+                }
+                catch(Exception ex)
+                {
+                    log.Error(ex.Message, ex);
+                }
+            }
         }
 
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
+            _emailProcessor.Dispose();
         }
 
         private static bool IsServiceInstalled()
