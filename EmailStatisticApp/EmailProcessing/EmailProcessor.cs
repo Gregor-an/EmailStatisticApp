@@ -100,7 +100,7 @@ namespace EmailStatisticApp.EmailProcessing
         {
             using(EmailMessageLoader emailLoader = new EmailMessageLoader(Path.Combine(Config.EmailsDirectoryPath, email)))
             {
-                using(SqlConnection con = new SqlConnection(Config._emailsDBConnectionString))
+                using(SqlConnection con = new SqlConnection(Config.EmailsDBConnectionString))
                 {
                     using(SqlCommand cmd = new SqlCommand("InsertEmailInfo", con))
                     {

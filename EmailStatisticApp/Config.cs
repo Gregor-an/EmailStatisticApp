@@ -11,21 +11,10 @@ namespace EmailStatisticApp
 {
     class Config : ConfigBase
     {
-        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        static readonly Configuration _fileDetection;
-
         static Config()
-        {
-            try
-            {
-                //_fileDetection = ConfigurationManager.OpenMappedExeConfiguration(new ExeConfigurationFileMap() { ExeConfigFilename = "EmailSta.config" }, ConfigurationUserLevel.None);
-            }
-            catch(Exception ex)
-            {
-                log.Error("FileDetection.config setup was failed", ex);
-            }
-        }
-        public static string _emailsDBConnectionString
+        {}
+
+        public static string EmailsDBConnectionString
         {
             get
             {

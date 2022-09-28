@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.ServiceProcess;
-using System.Threading.Tasks;
 using log4net;
 using System.Reflection;
 using System.IO;
@@ -67,8 +65,6 @@ namespace EmailStatisticApp
                 {
                     showMenu = MainMenu();
                 }
-                //Console.WriteLine("<press enter to exit...>");
-                //Console.ReadLine();
                 service.OnStop();
             }
             else
@@ -107,7 +103,7 @@ namespace EmailStatisticApp
 
         private static void PrintTheLastRecords()
         {
-            using(SqlConnection con = new SqlConnection(Config._emailsDBConnectionString))
+            using(SqlConnection con = new SqlConnection(Config.EmailsDBConnectionString))
             {
                 using(SqlCommand cmd = new SqlCommand("ReadEmailInfo", con))
                 {
@@ -118,13 +114,6 @@ namespace EmailStatisticApp
                     SqlDataAdapter adapter = new SqlDataAdapter(cmd);
                     adapter.Fill(Table);
                     DumpDataTable(Table);
-                    //foreach(DataRow dataRow in Table.Rows)
-                    //{
-                    //    foreach(var item in dataRow.ItemArray)
-                    //    {
-                    //        Console.WriteLine(item);
-                    //    }
-                    //}
                 }
             }
         }
