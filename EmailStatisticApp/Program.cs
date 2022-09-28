@@ -1,13 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.ServiceProcess;
-using System.Threading.Tasks;
 using log4net;
 using System.Reflection;
 using System.IO;
 using System.Configuration.Install;
+using EmailStatisticApp.EmailProcessing;
+using System.Threading;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace EmailStatisticApp
 {
@@ -52,14 +54,17 @@ namespace EmailStatisticApp
 
             if(debugMode)
             {
-                Console.WriteLine("Ready to attach...");
+                Console.WriteLine("Ready to start...");
                 Console.WriteLine("<press enter to continue...>");
                 Console.ReadLine();
                 Program service = new Program();
                 service.OnStart(null);
                 Console.WriteLine("Service Started...");
-                Console.WriteLine("<press enter to exit...>");
-                Console.ReadLine();
+                bool showMenu = true;
+                while(showMenu)
+                {
+                    showMenu = MainMenu();
+                }
                 service.OnStop();
             }
             else
@@ -68,19 +73,104 @@ namespace EmailStatisticApp
             }
         }
 
+        private static bool MainMenu()
+        {
+            Console.Clear();
+            Console.WriteLine("Choose an option:");
+            Console.WriteLine("1) Print the last 100 records");
+            Console.WriteLine("2) Exit");
+            Console.Write("\r\nSelect an option: ");
+
+            switch(Console.ReadLine())
+            {
+                case "1":
+                    try
+                    {
+                        PrintTheLastRecords();
+                        Console.ReadLine();
+                    }
+                    catch(Exception ex) 
+                    {
+                        log.Error(ex.Message, ex);
+                    }
+                    return true;
+                case "2":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        private static void PrintTheLastRecords()
+        {
+            using(SqlConnection con = new SqlConnection(Config.EmailsDBConnectionString))
+            {
+                using(SqlCommand cmd = new SqlCommand("ReadEmailInfo", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    con.Open();
+                    DataTable Table = new DataTable("Records");
+                    SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                    adapter.Fill(Table);
+                    DumpDataTable(Table);
+                }
+            }
+        }
+
+        private static void DumpDataTable(DataTable dt)
+        {
+            using(DataTableReader dtReader = dt.CreateDataReader())
+            {
+                if((dt == null) || !(dtReader.HasRows))
+                {
+                    Console.Error.WriteLine("There are no rows");
+                }
+                else
+                {
+                    while(dtReader.Read())
+                    {
+                        Console.WriteLine(new string('-', 50));
+                        for(int i = 0; i < dtReader.FieldCount; i++)
+                        {
+                            string value = dtReader.GetValue(i).ToString().Trim();
+                            Console.WriteLine("{0} = {1}",
+                                dtReader.GetName(i).Trim(),
+                                string.IsNullOrEmpty(value) ? "NULL" : value);
+                        }
+                        Console.WriteLine();
+                    }
+                }
+            }
+        }
+
+        EmailProcessor _emailProcessor;
         protected override void OnStart(string[] args)
         {
-
+            this._emailProcessor = new EmailProcessor();
+            Thread thread = new Thread(new ThreadStart(this._emailProcessor.ProcessEmails));
+            thread.Start();
         }
 
         protected override void OnStop()
         {
-
+            if(_emailProcessor != null)
+            {
+                try
+                {
+                    _emailProcessor.ThreadManager.Stop();
+                }
+                catch(Exception ex)
+                {
+                    log.Error(ex.Message, ex);
+                }
+            }
         }
 
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
+            _emailProcessor.Dispose();
         }
 
         private static bool IsServiceInstalled()
