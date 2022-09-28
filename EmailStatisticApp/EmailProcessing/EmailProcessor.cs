@@ -1,7 +1,9 @@
 ﻿using log4net;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -51,7 +53,6 @@ namespace EmailStatisticApp.EmailProcessing
             {
                 Directory.CreateDirectory(dirPath);
             }
-            Console.WriteLine($"DirPath {dirPath}");
 
             return Directory.GetFiles(dirPath, "*.eml").ToList();
         }
@@ -63,8 +64,6 @@ namespace EmailStatisticApp.EmailProcessing
         {
             foreach(string email in emails)
             {
-                Console.WriteLine($"Email {email}");
-
                 ThreadManager.StartNewJob(() =>
                 {
                     try 
@@ -101,7 +100,23 @@ namespace EmailStatisticApp.EmailProcessing
         {
             using(EmailMessageLoader emailLoader = new EmailMessageLoader(Path.Combine(Config.EmailsDirectoryPath, email)))
             {
-                Console.WriteLine( $"Sender {emailLoader.EmailMessage.Sender.DisplayName} Subject {emailLoader.EmailMessage.Subject}");
+                using(SqlConnection con = new SqlConnection(Config._emailsDBConnectionString))
+                {
+                    using(SqlCommand cmd = new SqlCommand("InsertEmailInfo", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.Add("@MessageId", SqlDbType.VarChar).Value = emailLoader.EmailMessage.MessageId;
+                        cmd.Parameters.Add("@Subject", SqlDbType.VarChar).Value = emailLoader.EmailMessage.Subject;
+                        cmd.Parameters.Add("@From", SqlDbType.VarChar).Value = emailLoader.EmailMessage.From.DisplayName;
+                        cmd.Parameters.Add("@To", SqlDbType.VarChar).Value = String.Join(",", emailLoader.EmailMessage.To);
+                        cmd.Parameters.Add("@Sender", SqlDbType.VarChar).Value = emailLoader.EmailMessage.Sender.DisplayName;
+                        cmd.Parameters.AddWithValue("@TimeOfExecution", DateTime.Now);
+
+                        con.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
             }
         }
 

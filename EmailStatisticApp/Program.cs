@@ -10,6 +10,8 @@ using System.IO;
 using System.Configuration.Install;
 using EmailStatisticApp.EmailProcessing;
 using System.Threading;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace EmailStatisticApp
 {
@@ -60,13 +62,96 @@ namespace EmailStatisticApp
                 Program service = new Program();
                 service.OnStart(null);
                 Console.WriteLine("Service Started...");
-                Console.WriteLine("<press enter to exit...>");
-                Console.ReadLine();
+                bool showMenu = true;
+                while(showMenu)
+                {
+                    showMenu = MainMenu();
+                }
+                //Console.WriteLine("<press enter to exit...>");
+                //Console.ReadLine();
                 service.OnStop();
             }
             else
             {
                 ServiceBase.Run(new Program());
+            }
+        }
+
+        private static bool MainMenu()
+        {
+            Console.Clear();
+            Console.WriteLine("Choose an option:");
+            Console.WriteLine("1) Print the last 100 records");
+            Console.WriteLine("2) Exit");
+            Console.Write("\r\nSelect an option: ");
+
+            switch(Console.ReadLine())
+            {
+                case "1":
+                    try
+                    {
+                        PrintTheLastRecords();
+                        Console.ReadLine();
+                    }
+                    catch(Exception ex) 
+                    {
+                        log.Error(ex.Message, ex);
+                    }
+                    return true;
+                case "2":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        private static void PrintTheLastRecords()
+        {
+            using(SqlConnection con = new SqlConnection(Config._emailsDBConnectionString))
+            {
+                using(SqlCommand cmd = new SqlCommand("ReadEmailInfo", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    con.Open();
+                    DataTable Table = new DataTable("Records");
+                    SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                    adapter.Fill(Table);
+                    DumpDataTable(Table);
+                    //foreach(DataRow dataRow in Table.Rows)
+                    //{
+                    //    foreach(var item in dataRow.ItemArray)
+                    //    {
+                    //        Console.WriteLine(item);
+                    //    }
+                    //}
+                }
+            }
+        }
+
+        private static void DumpDataTable(DataTable dt)
+        {
+            using(DataTableReader dtReader = dt.CreateDataReader())
+            {
+                if((dt == null) || !(dtReader.HasRows))
+                {
+                    Console.Error.WriteLine("There are no rows");
+                }
+                else
+                {
+                    while(dtReader.Read())
+                    {
+                        Console.WriteLine(new string('-', 50));
+                        for(int i = 0; i < dtReader.FieldCount; i++)
+                        {
+                            string value = dtReader.GetValue(i).ToString().Trim();
+                            Console.WriteLine("{0} = {1}",
+                                dtReader.GetName(i).Trim(),
+                                string.IsNullOrEmpty(value) ? "NULL" : value);
+                        }
+                        Console.WriteLine();
+                    }
+                }
             }
         }
 
